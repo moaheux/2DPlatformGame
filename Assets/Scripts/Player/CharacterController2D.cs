@@ -23,10 +23,14 @@ public class CharacterController2D : MonoBehaviour
 	private float speed;
 	private bool m_Crouched;            // Whether or not the player is grounded.
 
+	//Attack part
+	public Transform attackPoint;
+	public float attackRange = 0.5f;
+	public LayerMask enemyLayers;
+	public int attackDamage = 40;
+	public float attackRate = 2f;
+	float nextAttackTime = 0f;
 
-
-	// Debug variables
-	private bool OldGrounded = false;
 	private void Awake()
 	{
 		m_Rigidbody2D = GetComponent<Rigidbody2D>();
@@ -45,11 +49,36 @@ public class CharacterController2D : MonoBehaviour
 			if (colliders[i].gameObject != gameObject)
 				m_Grounded = true;
 		}
-
+		if (Time.time >= nextAttackTime)
+		{
+			if (Input.GetKeyDown(KeyCode.E))
+			{
+				animator.SetTrigger("Attack");
+				nextAttackTime = Time.time + 1f / attackRate;
+			}
+		}
 		SetAnimation();
 	}
 
-	public void Move(float move, bool crouch, bool jump)
+	public void Attack()
+    {
+		Collider2D[] hitEnemy =  Physics2D.OverlapCircleAll(attackPoint.position, attackRange, enemyLayers);
+		foreach (Collider2D enemy in hitEnemy)
+        {
+			Debug.Log("Enemy hit");
+			enemy.GetComponent<Enemy>().TakeDamage(attackDamage);
+        }
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+		if(attackPoint == null)
+        {
+			return;
+        }
+		Gizmos.DrawWireSphere(attackPoint.position, attackRange);
+    }
+    public void Move(float move, bool crouch, bool jump)
 	{
 		// If crouching, check to see if the character can stand up
 		if (!crouch)
