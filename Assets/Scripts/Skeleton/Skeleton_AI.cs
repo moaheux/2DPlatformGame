@@ -15,18 +15,24 @@ public class Skeleton_AI : MonoBehaviour
     public float speed = 0.5f;
     public float step = 0.0f;
     public float escapeDistance = 2.0f;
+    public float attackRange = 1.0f;
+
+    /******************************************/
+    /*-------------- Animation ---------------*/
     public bool isChasing = false;
     public bool isReacting = false;
+    public bool isIdle = false;
+    public bool isAttacking = false;
+    public bool isWalking = false;
 
     public Vector2 destDistance = new Vector2(5f, 0);
-
 
     // local variables
     [SerializeField]
     private Rigidbody2D rb2d;
     [SerializeField]
-    private bool movingForward;
-
+    private bool movingForward = true;
+    [SerializeField]
     private bool playerSeen = false;
 
     [SerializeField]
@@ -39,39 +45,44 @@ public class Skeleton_AI : MonoBehaviour
         rb2d = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
         initialPosition = rb2d.position;
+        Vector2 localScale = rb2d.transform.localScale;
+        localScale.x = 1;
     }
     // Update is called once per frame
     void FixedUpdate()
     {
+        if (isIdle || animator.GetBool("Is_Dead"))
+            return;
         step = speed * Time.deltaTime;
         playerSeen = CanSeePlayer(viewRange);
-        if (playerSeen && (isChasing == false) && (isReacting == false))
+
+        if (playerSeen && (!isChasing) && (!isReacting))
         {
             animator.SetTrigger("React");
-            rb2d.velocity = Vector2.zero;
         }
         else
-        { 
-            if ((isChasing == false))
+        {
+            if (!isChasing)
             {
-                if (isReacting == false)
+                if (isWalking)
                 {
-                    if (movingForward)
+                    if (!movingForward)
                     {
-                        rb2d.transform.position = Vector2.MoveTowards(rb2d.position, rb2d.position + destDistance, step);
+                        rb2d.position = Vector2.MoveTowards(rb2d.position, rb2d.position + destDistance, step);
+                        Debug.Log("rb2d.position = " + rb2d.transform.position + "  rb2d.position + destDistance = " + (rb2d.position + destDistance));
                         if (rb2d.position.x >= (initialPosition + destDistance).x)
                         {
-                            movingForward = false;
                             Flip();
+                            movingForward = true;
                         }
                     }
                     else
                     {
-                        rb2d.transform.position = Vector2.MoveTowards(rb2d.position, initialPosition, step);
+                        rb2d.position = Vector2.MoveTowards(rb2d.position, initialPosition, step);
                         if (rb2d.position.x <= initialPosition.x)
                         {
-                            movingForward = true;
                             Flip();
+                            movingForward = false;
                         }
                     }
                 }
@@ -79,11 +90,18 @@ public class Skeleton_AI : MonoBehaviour
             else
             {
                 Chase();
+
                 // escape chase if player too far away
                 distance = Vector2.Distance(transform.position, player.transform.position);
+                //the player has fleen
                 if (Mathf.Abs(distance) > escapeDistance)
                 {
                     isChasing = false;
+                }
+                //attack player
+                else if (distance <= attackRange)
+                {
+                    animator.SetTrigger("Attack");
                 }
             }
         }
@@ -91,34 +109,31 @@ public class Skeleton_AI : MonoBehaviour
 
     public void Chase ()
     {
-        if(transform.position.x < player.position.x)
+        if (!isAttacking)
         {
-            rb2d.velocity = new Vector2(speed, 0);
+            rb2d.position = Vector2.MoveTowards(rb2d.position, new Vector2(player.position.x, transform.position.y), step);
+        }
+        if (transform.position.x < player.position.x)
+        {
             transform.localScale = new Vector2(1, 1);
         }
         else
         {
-            rb2d.velocity = new Vector2(-speed, 0);
             transform.localScale = new Vector2(-1, 1);
         }
+        
     }
     public bool CanSeePlayer(float distance)
     {
         float castdistance = distance;
         Vector2 localScale = rb2d.transform.localScale;
-        if (localScale.x == 1)
-            movingForward = true;
-        else
-            movingForward = false;
-
-        if (!movingForward)
+        if (localScale.x != 1)
         {
             castdistance = -distance;
         }
         Vector2 endPos = rb2d.transform.position + Vector3.right * castdistance;
 
         RaycastHit2D hit = Physics2D.Linecast(rb2d.transform.position, endPos, 1 << LayerMask.NameToLayer("Action"));
-        Debug.DrawRay(transform.position, endPos, Color.green);
         if (hit.collider != null)
         {
             if (hit.collider.gameObject.CompareTag("Player"))

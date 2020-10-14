@@ -19,12 +19,12 @@ public class EnemyWeapon : MonoBehaviour
     }
 
     private void OnDrawGizmosSelected()
+     {
+        if (attackPoint == null)
         {
-            if (attackPoint == null)
-            {
-                return;
-            }
-            Gizmos.DrawWireSphere(attackPoint.position, attackRange);
+            return;
+        }
+        Gizmos.DrawWireSphere(attackPoint.position, attackRange);
     }
 
 }
